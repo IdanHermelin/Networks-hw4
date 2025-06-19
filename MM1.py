@@ -28,12 +28,10 @@ class MM1Queue:
 
         # Schedule the first arrival
         heapq.heappush(self.event_list, (random.expovariate(arrival_rate), ARRIVAL))
+        event_time, event_type = heapq.heappop(self.event_list)
+        self.current_time = event_time
 
         while self.current_time < simulation_time:
-            # At each step process the next event ordered by time
-            event_time, event_type = heapq.heappop(self.event_list)
-            self.current_time = event_time
-
             # Arrival event means a new packet has arrived so calculate the next arrival time
             # serve packet if server is not busy, otherwise add to queue
             if event_type == ARRIVAL:
@@ -48,7 +46,8 @@ class MM1Queue:
 
                     heapq.heappush(self.event_list, (self.current_time + service_time, DEPARTURE))
                 else:
-                    self.queue.append(self.current_time)
+                    if len(self.queue) < self.capacity:
+                        self.queue.append(self.current_time)
                 next_arrival = self.current_time + random.expovariate(arrival_rate)
                 heapq.heappush(self.event_list, (next_arrival, ARRIVAL))
 
@@ -69,6 +68,8 @@ class MM1Queue:
                 else:
                     # queue empty, server becomes idle
                     self.server_busy = False
+            event_time, event_type = heapq.heappop(self.event_list)
+            self.current_time = event_time
 
     def print_statistics(self):
         if self.num_customers_served == 0:
