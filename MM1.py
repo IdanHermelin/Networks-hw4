@@ -1,7 +1,7 @@
 import random
 import heapq
 import time
-
+import secrets
 # Events
 ARRIVAL = 1
 DEPARTURE = 2
@@ -16,6 +16,7 @@ class MM1Queue:
         self.num_customers_served = 0
         self.total_wait_time = 0
         self.current_time = 0
+        self.average_wait_time = 0
 
         # Event list for the simulation
         # Using a min-heap to manage events
@@ -23,7 +24,7 @@ class MM1Queue:
 
 
     def simulate(self, simulation_time, arrival_rate, service_rate):
-        random.seed(time.time())
+        random.seed(time.time())  # Seed for reproducibility
 
         # Schedule the first arrival
         heapq.heappush(self.event_list, (random.expovariate(arrival_rate), ARRIVAL))
@@ -38,7 +39,13 @@ class MM1Queue:
             if event_type == ARRIVAL:
                 if not self.server_busy:
                     self.server_busy = True
+                    wait_time = 0
                     service_time = random.expovariate(service_rate)
+
+                    # if the departure time exceeds the simulation time, we do not count this customer
+                    if self.current_time + service_time < simulation_time:
+                        self.total_wait_time += wait_time + service_time
+
                     heapq.heappush(self.event_list, (self.current_time + service_time, DEPARTURE))
                 else:
                     self.queue.append(self.current_time)
@@ -52,8 +59,12 @@ class MM1Queue:
                     # Serve the next customer in the queue
                     arrival_time = self.queue.pop(0)
                     wait_time = self.current_time - arrival_time
-                    self.total_wait_time += wait_time
                     service_time = random.expovariate(service_rate)
+
+                    # if the departure time exceeds the simulation time, we do not count this customer
+                    if self.current_time + service_time < simulation_time:
+                        self.total_wait_time += wait_time + service_time
+
                     heapq.heappush(self.event_list, (self.current_time + service_time, DEPARTURE))
                 else:
                     # queue empty, server becomes idle
@@ -64,10 +75,10 @@ class MM1Queue:
             print("No customers were served.")
             return
         
-        average_wait_time = self.total_wait_time / self.num_customers_served
+        self.average_wait_time = self.total_wait_time / self.num_customers_served
         print(f"Total customers served: {self.num_customers_served}")
         print(f"Total wait time: {self.total_wait_time:.2f} seconds")
-        print(f"Average wait time per customer: {average_wait_time:.2f} seconds")
+        print(f"Average wait time per customer: {self.average_wait_time:.2f} seconds")
 
     
     
