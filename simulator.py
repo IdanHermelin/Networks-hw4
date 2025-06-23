@@ -156,8 +156,8 @@ def main():
         print("Error: Probabilities P₁ ... Pₘ must sum to 1.")
         sys.exit(1)
 
-    # Restriction 2: All rates must be positive
-    if λ <= 0 or any(q <= 0 for q in Q) or any(mu <= 0 for mu in μ):
+    # Restriction 2: All rates must be non negative
+    if λ <= 0 or any(q < 0 for q in Q) or any(mu < 0 for mu in μ):
         print("Error: All rates (λ, Q₁ ... Qₘ, μ₁ ... μₘ) must be positive.")
         sys.exit(1)
 
