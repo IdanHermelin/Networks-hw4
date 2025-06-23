@@ -23,27 +23,27 @@ class LoadBalancer:
 
 
     def simulate(self, simulation_time):
-        random.seed(time.time())  # Seed for reproducibility
         M = len(self.capacities)
         # build the M queues
         self.queues = [MM1Queue(capacity) for capacity in self.capacities]
         
         # simulate balancer first
         arrivals = [(random.expovariate(self.arrival_rate), ARRIVAL)]
+        current_time = arrivals[0][0]  # Start time of the first arrival
 
         # Generate arrival events until the simulation time is reached
-        while self.current_time < simulation_time:
-            self.current_time = arrivals[-1][0]
-            next_arrival = self.current_time + random.expovariate(self.arrival_rate)
+        while current_time < simulation_time:
+            next_arrival = current_time + random.expovariate(self.arrival_rate)
             if next_arrival >= simulation_time:
                 break
             arrivals.append((next_arrival, ARRIVAL))
+            current_time = arrivals[-1][0]
 
         # Create event lists for each server
-        for arrival in arrivals:
+        servers_sampled = random.choices(range(M), weights=self.probabilities, k=len(arrivals))
+        for i,arrival in enumerate(arrivals):
             # Choose a server based on the probabilities
-            server_index = random.choices(range(M), weights=self.probabilities, k=1)[0]
-            self.queues[server_index].event_list.append(arrival)
+            self.queues[servers_sampled[i]].event_list.append(arrival)
 
         # Simulate each server one at a time
         for i in range(M):
@@ -53,32 +53,41 @@ class LoadBalancer:
         self.A = sum(queue.num_customers_served for queue in self.queues)
         self.B = sum(queue.num_thrown for queue in self.queues)
         self.Tend = max(queue.last for queue in self.queues)
-        # update Tw, Ts
+        self.Ts = sum(queue.total_service_time for queue in self.queues) / self.A if self.A > 0 else 0
+        self.Tw = sum(queue.total_wait_time for queue in self.queues) / self.A if self.A > 0 else 0
 
+        
+        
+        
 class MM1Queue:
-    def __init__(self, N, event_list=[]):
+    def __init__(self, N, event_list=None):
         self.capacity = N
         self.queue = []
         self.server_busy = False
-
-        # Statistics
+        if event_list is None:
+            self.event_list = []
+        else:
+            self.event_list = event_list        # Statistics
         self.last = 0
         self.num_thrown = 0
         self.num_customers_served = 0
+        self.total_service_time = 0
         self.total_wait_time = 0
         self.current_time = 0
         self.average_wait_time = 0
-
-        # Event list for the simulation
-        # Using a min-heap to manage events
-        self.event_list = event_list
-
-
+        self.average_service_time = 0
     def simulate(self, simulation_time, service_rate):
-        random.seed(time.time())  # Seed for reproducibility
-        event_time, event_type = heapq.heappop(self.event_list)
-        self.current_time = event_time
-        while self.current_time < simulation_time:
+        if not self.event_list:
+            return
+        heapq.heapify(self.event_list)
+        
+        while self.event_list:
+            event_time, event_type = heapq.heappop(self.event_list)
+            
+            if event_time >= simulation_time:
+                break
+                
+            self.current_time = event_time
             # At each step process the next event ordered by time
 
             # Arrival event means a new packet has arrived so calculate the next arrival time
@@ -91,7 +100,8 @@ class MM1Queue:
 
                     # if the departure time exceeds the simulation time, we do not count this customer
                     if self.current_time + service_time < simulation_time:
-                        self.total_wait_time += wait_time + service_time
+                        self.total_service_time += service_time
+                        self.total_wait_time += wait_time
 
                     heapq.heappush(self.event_list, (self.current_time + service_time, DEPARTURE))
                 else:
@@ -108,32 +118,27 @@ class MM1Queue:
                     # Serve the next customer in the queue
                     arrival_time = self.queue.pop(0)
                     wait_time = self.current_time - arrival_time
-                    service_time = random.expovariate(service_rate)
-
-                    # if the departure time exceeds the simulation time, we do not count this customer
+                    service_time = random.expovariate(service_rate)                    # if the departure time exceeds the simulation time, we do not count this customer
                     if self.current_time + service_time < simulation_time:
-                        self.total_wait_time += wait_time + service_time
-
+                        self.total_service_time += service_time
+                        self.total_wait_time += wait_time
                     heapq.heappush(self.event_list, (self.current_time + service_time, DEPARTURE))
                 else:
                     # queue empty, server becomes idle
                     self.server_busy = False
-                    
-            event_time, event_type = heapq.heappop(self.event_list)
-            self.current_time = event_time
+        
 
     def print_statistics(self):
         if self.num_customers_served == 0:
             print("No customers were served.")
             return
-        
+        self.average_service_time = self.total_service_time / self.num_customers_served
         self.average_wait_time = self.total_wait_time / self.num_customers_served
-        print(f"Total customers served: {self.num_customers_served}")
-        print(f"Total wait time: {self.total_wait_time:.2f} seconds")
-        print(f"Average wait time per customer: {self.average_wait_time:.2f} seconds")
+        
 
 
 def main():
+    random.seed(time.time())
     args = sys.argv[1:]
     if len(args) < 5:
         print("Error: Not enough arguments.")
@@ -166,13 +171,10 @@ def main():
         print("Error: Incorrect number of parameters for servers.")
         sys.exit(1)
 
-
     # Create the load balancer
     load_balancer = LoadBalancer(capacities=Q, probabilities=P, service_rates=μ, arrival_rate=λ)
     load_balancer.simulate(T)
+    print(f"{load_balancer.A} {load_balancer.B} {load_balancer.Tend:.4f} {load_balancer.Tw:.4f} {load_balancer.Ts:.4f}")
 
 if __name__ == "__main__":
     main()
-
-    
-    
