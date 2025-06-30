@@ -67,7 +67,7 @@ class MM1Queue:
         if event_list is None:
             self.event_list = []
         else:
-            self.event_list = event_list        # Statistics
+            self.event_list = event_list 
         self.last = 0
         self.num_thrown = 0
         self.num_customers_served = 0
@@ -118,7 +118,7 @@ class MM1Queue:
                     # Serve the next customer in the queue
                     arrival_time = self.queue.pop(0)
                     wait_time = self.current_time - arrival_time
-                    service_time = random.expovariate(service_rate)                    # if the departure time exceeds the simulation time, we do not count this customer
+                    service_time = random.expovariate(service_rate)
                     if self.current_time + service_time < simulation_time:
                         self.total_service_time += service_time
                         self.total_wait_time += wait_time
@@ -141,38 +141,38 @@ def main():
     random.seed(time.time())
     args = sys.argv[1:]
     if len(args) < 5:
-        print("Error: Not enough arguments.")
+        print("Error: Not enough arguments!")
         sys.exit(1)
 
     T = float(args[0])
     M = int(args[1])
     P = list(map(float, args[2:2+M]))
-    λ = float(args[2+M])
+    lamda = float(args[2+M])
     Q = list(map(float, args[3+M:3+2*M]))
-    μ = list(map(float, args[3+2*M:3+3*M]))
+    mus = list(map(float, args[3+2*M:3+3*M]))
 
-    # Restriction 1: Sum of P₁ ... Pₘ must be 1
+    # Restriction 1: Sum of P1 ... Pm must be 1
     if not abs(sum(P) - 1.0) < 1e-6:
-        print("Error: Probabilities P₁ ... Pₘ must sum to 1.")
+        print("Error: Probabilities must sum to 1!")
         sys.exit(1)
 
     # Restriction 2: All rates must be non negative
-    if λ <= 0 or any(q < 0 for q in Q) or any(mu < 0 for mu in μ):
-        print("Error: All rates (λ, Q₁ ... Qₘ, μ₁ ... μₘ) must be positive.")
+    if lamda <= 0 or any(q < 0 for q in Q) or any(mu < 0 for mu in mus):
+        print("Error: All rates must be positive!")
         sys.exit(1)
 
-    # Restriction 3: Number of servers M ≥ 1
+    # Restriction 3: Number of servers M >= 1
     if M < 1:
-        print("Error: Number of servers M must be at least 1.")
+        print("Error: Number of servers M must be at least 1!")
         sys.exit(1)
 
     # Restriction 4: All input values must be provided
-    if len(P) != M or len(Q) != M or len(μ) != M:
-        print("Error: Incorrect number of parameters for servers.")
+    if len(P) != M or len(Q) != M or len(mus) != M:
+        print("Error: Incorrect number of parameters for servers!")
         sys.exit(1)
 
     # Create the load balancer
-    load_balancer = LoadBalancer(capacities=Q, probabilities=P, service_rates=μ, arrival_rate=λ)
+    load_balancer = LoadBalancer(capacities=Q, probabilities=P, service_rates=mus, arrival_rate=lamda)
     load_balancer.simulate(T)
     print(f"{load_balancer.A} {load_balancer.B} {load_balancer.Tend:.4f} {load_balancer.Tw:.4f} {load_balancer.Ts:.4f}")
 
